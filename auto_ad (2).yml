@@ -1,0 +1,43 @@
+name: Rolimons Auto Trade Ad
+on:
+ # schedule:
+  #  - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+jobs:
+  post:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Cache Pip Dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install Dependencies
+        run: pip install requests
+
+      - name: Run Ad Bot
+        env:
+          ROLI_COOKIE: ${{ secrets.ROLI_COOKIE }}
+          PLAYER_ID: ${{ secrets.PLAYER_ID }}
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          OUTBID_WEBHOOK: ${{ secrets.OUTBID_WEBHOOK }}
+          MONITOR_OUTBID: 'true'
+          WEBSHARE_API_URL: ${{ secrets.WEBSHARE_API_URL }}
+          USE_RANDOM: 'true'        # Set to 'true' for random selection
+          MIN_VALUE: '5000'
+          # Set to 'true' to use SPECIFIC_IDS, 'false' to auto-fetch top 4 RAP
+          USE_CUSTOM_IDS: 'false' 
+          OFFER_IDS: '527365852,1365767'
+          REQUEST_IDS: ''
+          REQUEST_TAGS: 'upgrade, any'
+        run: python main.py
