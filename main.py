@@ -18,6 +18,7 @@ REQUEST_IDS = os.environ.get("REQUEST_IDS", "")
 REQUEST_TAGS = [t.strip().lower() for t in os.environ.get("REQUEST_TAGS", "any").split(",")]
 USE_RANDOM = os.environ.get("USE_RANDOM", "false").lower() == "true"
 MIN_VALUE = int(os.environ.get("MIN_VALUE", "0"))
+CREATE_FAIR_TRADE = os.environ.get("CREATE_FAIR_TRADE", "false").lower() == "true"
 
 CHECK_ONLY_UGC = False
 
@@ -246,6 +247,31 @@ def main():
     if offering_metadata:
         offer_ids = [i['id'] for i in offering_metadata]
         request_ids = [int(i.strip()) for i in REQUEST_IDS.split(",") if i.strip()]
+
+        # === FAIR TRADE LOGIC ===
+        if CREATE_FAIR_TRADE and total_offer_value > 0:
+            fair_items = []
+            # Looks for items within a +/- 5% margin of your total offer
+            min_target = total_offer_value * 0.95
+            max_target = total_offer_value * 1.05
+
+            for item_id, details in item_details.items():
+                val = details[3] if (len(details) > 3 and details[3] != -1) else details[2]
+                # Don't request items we are currently offering
+                if int(item_id) in offer_ids: continue
+                
+                # If the item value falls within our fair trade margin, add it to potential requests
+                if min_target <= val <= max_target:
+                    fair_items.append(int(item_id))
+
+            if fair_items:
+                random.shuffle(fair_items)
+                request_ids = fair_items[:4] # Pick up to 4 random fair items to request
+                log_to_discord(f"⚖️ Auto Fair Trade: Found items matching ~R${total_offer_value:,}")
+            else:
+                log_to_discord(f"⚠️ Auto Fair Trade: Could not find items matching R${total_offer_value:,}. Using default requests.")
+
+
         session = requests.Session()
         session.headers.update({'User-Agent': 'Mozilla/5.0', 'Content-Type': 'application/json', 'Origin': 'https://www.rolimons.com', 'Referer': 'https://www.rolimons.com/tradeads'})
         session.cookies.set('_RoliVerification', COOKIE, domain='.rolimons.com')
