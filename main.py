@@ -246,6 +246,7 @@ def main():
 
     if offering_metadata:
         offer_ids = [i['id'] for i in offering_metadata]
+        total_offer_value = sum(i['value'] for i in offering_metadata)
         request_ids = [int(i.strip()) for i in REQUEST_IDS.split(",") if i.strip()]
 
         # === FAIR TRADE LOGIC ===
