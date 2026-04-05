@@ -307,7 +307,7 @@ def main():
         session.headers.update({'User-Agent': 'Mozilla/5.0', 'Content-Type': 'application/json', 'Origin': 'https://www.rolimons.com', 'Referer': 'https://www.rolimons.com/tradeads'})
         session.cookies.set('_RoliVerification', COOKIE, domain='.rolimons.com')
         
-        payload = {"player_id": int(PLAYER_ID), "offer_item_ids": offer_ids, "request_item_ids": request_ids, "request_tags": REQUEST_TAGS}
+        payload = {"player_id": int(PLAYER_ID), "offer_item_ids": offer_ids, "request_item_ids": request_ids, "request_tags": active_request_tags}
         posted = False
         for attempt in range(3):
             proxy = get_proxy()
