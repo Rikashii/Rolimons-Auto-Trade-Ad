@@ -40,4 +40,5 @@ jobs:
           OFFER_IDS: '527365852,1365767'
           REQUEST_IDS: ''
           REQUEST_TAGS: 'upgrade, any'
+          CREATE_FAIR_TRADE: 'true'     # Finds and requests for items worth about as much as your items
         run: python main.py
