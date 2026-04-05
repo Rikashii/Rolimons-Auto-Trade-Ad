@@ -204,11 +204,11 @@ def main():
 
     # Divides epoch time by 600 (10 mins). If even, True. If odd, False.
     is_even_cycle = int(time.time() / 600) % 2 == 0
-    current_auto_fair_trade = AUTO_FAIR_TRADE
+    current_CREATE_FAIR_TRADE = CREATE_FAIR_TRADE
     
     if ALTERNATE_POSTS:
-        current_auto_fair_trade = is_even_cycle
-        log_to_discord(f"🔄 Alternating Mode: Currently using **{'AUTO FAIR TRADE (Items)' if current_auto_fair_trade else 'DEFAULT (Tags)'}** cycle.")
+        current_CREATE_FAIR_TRADE = is_even_cycle
+        log_to_discord(f"🔄 Alternating Mode: Currently using **{'AUTO FAIR TRADE (Items)' if current_CREATE_FAIR_TRADE else 'DEFAULT (Tags)'}** cycle.")
 
     # 1. FETCH INVENTORY FROM BOTH SOURCES
     # Classic Limiteds
@@ -261,7 +261,7 @@ def main():
         active_request_tags = REQUEST_TAGS.copy()
 
         # === ADVANCED FAIR TRADE LOGIC ===
-        if current_auto_fair_trade and total_offer_value > 0:
+        if current_CREATE_FAIR_TRADE and total_offer_value > 0:
             min_target = total_offer_value * 0.95
             max_target = total_offer_value * 1.05
             
