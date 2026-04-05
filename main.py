@@ -248,27 +248,57 @@ def main():
         offer_ids = [i['id'] for i in offering_metadata]
         total_offer_value = sum(i['value'] for i in offering_metadata)
         request_ids = [int(i.strip()) for i in REQUEST_IDS.split(",") if i.strip()]
+        active_request_tags = REQUEST_TAGS.copy()
 
-        # === FAIR TRADE LOGIC ===
+        # === ADVANCED FAIR TRADE LOGIC ===
         if CREATE_FAIR_TRADE and total_offer_value > 0:
-            fair_items = []
-            # Looks for items within a +/- 5% margin of your total offer
             min_target = total_offer_value * 0.95
             max_target = total_offer_value * 1.05
+            
+            # Format: (item_id, item_value)
+            available_items = [
+                (int(k), v[3] if len(v)>3 and v[3]!=-1 else v[2])
+                for k, v in item_details.items()
+                if int(k) not in offer_ids and (v[3] if len(v)>3 and v[3]!=-1 else v[2]) > 0
+            ]
+            
+            fair_combo = []
+            
+            # 1. Find single items that match the total value perfectly
+            single_matches = [item for item in available_items if min_target <= item[1] <= max_target]
+            
+            # 50% chance to force a 1-item trade if matches exist, otherwise look for multi-item combinations
+            if single_matches and random.choice([True, False]):
+                fair_combo = [random.choice(single_matches)[0]]
+            else:
+                # 2. Try to build a combination of 2 to 4 items that match the total value
+                for _ in range(200): # Allow up to 200 attempts to find a valid combo
+                    num_items = random.randint(1, 4)
+                    combo = []
+                    current_sum = 0
+                    
+                    for _ in range(num_items):
+                        # Only pick from items that won't push us over the max target limit
+                        valid_next_items = [i for i in available_items if current_sum + i[1] <= max_target and i[0] not in combo]
+                        if not valid_next_items:
+                            break
+                        item = random.choice(valid_next_items)
+                        combo.append(item[0])
+                        current_sum += item[1]
+                        
+                    if min_target <= current_sum <= max_target:
+                        fair_combo = combo
+                        break
+            
+            # Fallback if combo builder failed but singles exist
+            if not fair_combo and single_matches:
+                fair_combo = [random.choice(single_matches)[0]]
 
-            for item_id, details in item_details.items():
-                val = details[3] if (len(details) > 3 and details[3] != -1) else details[2]
-                # Don't request items we are currently offering
-                if int(item_id) in offer_ids: continue
-                
-                # If the item value falls within our fair trade margin, add it to potential requests
-                if min_target <= val <= max_target:
-                    fair_items.append(int(item_id))
-
-            if fair_items:
-                random.shuffle(fair_items)
-                request_ids = fair_items[:4] # Pick up to 4 random fair items to request
-                log_to_discord(f"⚖️ Auto Fair Trade: Found items matching ~R${total_offer_value:,}")
+            # Apply the results
+            if fair_combo:
+                request_ids = fair_combo
+                active_request_tags = [] # <--- Strips tags so the ad posts successfully
+                log_to_discord(f"⚖️ Auto Fair Trade: Found {len(fair_combo)} item(s) matching ~R${total_offer_value:,}")
             else:
                 log_to_discord(f"⚠️ Auto Fair Trade: Could not find items matching R${total_offer_value:,}. Using default requests.")
 
