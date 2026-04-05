@@ -19,6 +19,8 @@ REQUEST_TAGS = [t.strip().lower() for t in os.environ.get("REQUEST_TAGS", "any")
 USE_RANDOM = os.environ.get("USE_RANDOM", "false").lower() == "true"
 MIN_VALUE = int(os.environ.get("MIN_VALUE", "0"))
 CREATE_FAIR_TRADE = os.environ.get("CREATE_FAIR_TRADE", "false").lower() == "true"
+ALTERNATE_POSTS = os.environ.get("ALTERNATE_POSTS", "true").lower() == "true"
+EXCLUDE_RARES = os.environ.get("EXCLUDE_RARES", "true").lower() == "true"
 
 CHECK_ONLY_UGC = False
 
@@ -200,6 +202,14 @@ def send_visual_webhook(offering_metadata, requesting_ids, status_msg, success=T
 def main():
     log_to_discord(f"🚀 Bot Sequence Started at {datetime.now().strftime('%H:%M:%S')}")
 
+    # Divides epoch time by 600 (10 mins). If even, True. If odd, False.
+    is_even_cycle = int(time.time() / 600) % 2 == 0
+    current_auto_fair_trade = AUTO_FAIR_TRADE
+    
+    if ALTERNATE_POSTS:
+        current_auto_fair_trade = is_even_cycle
+        log_to_discord(f"🔄 Alternating Mode: Currently using **{'AUTO FAIR TRADE (Items)' if current_auto_fair_trade else 'DEFAULT (Tags)'}** cycle.")
+
     # 1. FETCH INVENTORY FROM BOTH SOURCES
     # Classic Limiteds
     inv_data = safe_get_json(f"https://api.rolimons.com/players/v1/playerassets/{PLAYER_ID}", timeout=15)
@@ -251,34 +261,35 @@ def main():
         active_request_tags = REQUEST_TAGS.copy()
 
         # === ADVANCED FAIR TRADE LOGIC ===
-        if CREATE_FAIR_TRADE and total_offer_value > 0:
+        if current_auto_fair_trade and total_offer_value > 0:
             min_target = total_offer_value * 0.95
             max_target = total_offer_value * 1.05
             
-            # Format: (item_id, item_value)
-            available_items = [
-                (int(k), v[3] if len(v)>3 and v[3]!=-1 else v[2])
-                for k, v in item_details.items()
-                if int(k) not in offer_ids and (v[3] if len(v)>3 and v[3]!=-1 else v[2]) > 0
-            ]
+            available_items = []
+            for k, v in item_details.items():
+                if int(k) in offer_ids: continue # Don't request what we are offering
+                
+                val = v[3] if (len(v) > 3 and v[3] != -1) else v[2]
+                if val <= 0: continue
+                
+                # Exclude Rare items if configured (Index 9 in Rolimons API is the Rare flag)
+                is_rare = len(v) > 9 and v[9] == 1
+                if EXCLUDE_RARES and is_rare:
+                    continue
+                    
+                available_items.append((int(k), val))
             
             fair_combo = []
-            
-            # 1. Find single items that match the total value perfectly
             single_matches = [item for item in available_items if min_target <= item[1] <= max_target]
             
-            # 50% chance to force a 1-item trade if matches exist, otherwise look for multi-item combinations
             if single_matches and random.choice([True, False]):
                 fair_combo = [random.choice(single_matches)[0]]
             else:
-                # 2. Try to build a combination of 2 to 4 items that match the total value
-                for _ in range(200): # Allow up to 200 attempts to find a valid combo
+                for _ in range(200):
                     num_items = random.randint(1, 4)
                     combo = []
                     current_sum = 0
-                    
                     for _ in range(num_items):
-                        # Only pick from items that won't push us over the max target limit
                         valid_next_items = [i for i in available_items if current_sum + i[1] <= max_target and i[0] not in combo]
                         if not valid_next_items:
                             break
@@ -290,18 +301,15 @@ def main():
                         fair_combo = combo
                         break
             
-            # Fallback if combo builder failed but singles exist
             if not fair_combo and single_matches:
                 fair_combo = [random.choice(single_matches)[0]]
 
-            # Apply the results
             if fair_combo:
                 request_ids = fair_combo
-                active_request_tags = [] # <--- Strips tags so the ad posts successfully
+                active_request_tags = [] 
                 log_to_discord(f"⚖️ Auto Fair Trade: Found {len(fair_combo)} item(s) matching ~R${total_offer_value:,}")
             else:
-                log_to_discord(f"⚠️ Auto Fair Trade: Could not find items matching R${total_offer_value:,}. Using default requests.")
-
+                log_to_discord(f"⚠️ Auto Fair Trade: Could not find matches. Using defaults.")
 
         session = requests.Session()
         session.headers.update({'User-Agent': 'Mozilla/5.0', 'Content-Type': 'application/json', 'Origin': 'https://www.rolimons.com', 'Referer': 'https://www.rolimons.com/tradeads'})
