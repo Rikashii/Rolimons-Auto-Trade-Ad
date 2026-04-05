@@ -306,7 +306,12 @@ def main():
 
             if fair_combo:
                 request_ids = fair_combo
-                active_request_tags = [] 
+                
+                if len(fair_combo) <= 3:
+                    active_request_tags = ['any']
+                else:
+                    active_request_tags = []
+                    
                 log_to_discord(f"⚖️ Auto Fair Trade: Found {len(fair_combo)} item(s) matching ~R${total_offer_value:,}")
             else:
                 log_to_discord(f"⚠️ Auto Fair Trade: Could not find matches. Using defaults.")
