@@ -21,6 +21,7 @@ MIN_VALUE = int(os.environ.get("MIN_VALUE", "0"))
 CREATE_FAIR_TRADE = os.environ.get("CREATE_FAIR_TRADE", "false").lower() == "true"
 ALTERNATE_POSTS = os.environ.get("ALTERNATE_POSTS", "true").lower() == "true"
 EXCLUDE_RARES = os.environ.get("EXCLUDE_RARES", "true").lower() == "true"
+NOT_FOR_TRADE_IDS = [int(i.strip()) for i in os.environ.get("NOT_FOR_TRADE_IDS", "").split(",") if i.strip()]
 
 CHECK_ONLY_UGC = False
 
@@ -235,6 +236,9 @@ def main():
     else:
         inventory_list = []
         for asset_id, instances in my_assets.items():
+            if int(asset_id) in NOT_FOR_TRADE_IDS:
+                continue
+                
             details = item_details.get(str(asset_id))
             if details:
                 # Get the value (Price or RAP)
