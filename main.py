@@ -211,19 +211,42 @@ def main():
         current_CREATE_FAIR_TRADE = is_even_cycle
         log_to_discord(f"🔄 Alternating Mode: Currently using **{'AUTO FAIR TRADE (Items)' if current_CREATE_FAIR_TRADE else 'DEFAULT (Tags)'}** cycle.")
 
-    # 1. FETCH INVENTORY FROM BOTH SOURCES
-    # Classic Limiteds
-    inv_data = safe_get_json(f"https://api.rolimons.com/players/v1/playerassets/{PLAYER_ID}", timeout=15)
-    standard_assets = inv_data.get('playerAssets') or inv_data.get('assets') or {}
+    # 1. FETCH INVENTORY (PAGINATED + CHECKS FOR HOLDS)
+    my_assets = {}
+    cursor = ""
+    roblox_success = False
+    
+    for _ in range(20): # Paginate up to 20 pages max
+        url = f"https://inventory.roblox.com/v1/users/{PLAYER_ID}/assets/collectibles?limit=100"
+        if cursor:
+            url += f"&cursor={cursor}"
+            
+        data = safe_get_json(url, timeout=15, proxy=get_proxy())
+        
+        if 'data' in data:
+            roblox_success = True
+            for item in data['data']:
+                # SKIP ITEMS ON HOLD
+                if item.get('isOnHold', False):
+                    continue
+                    
+                asset_id = str(item['assetId'])
+                if asset_id not in my_assets:
+                    my_assets[asset_id] = []
+                my_assets[asset_id].append(item.get('userAssetId'))
+                
+            cursor = data.get('nextPageCursor')
+            if not cursor:
+                break
+        else:
+            break
 
-    # UGC Limiteds
-    ugc_url = f"https://inventory.roblox.com/v1/users/{PLAYER_ID}/assets/collectibles?limit=100"
-    ugc_data = safe_get_json(ugc_url, timeout=15, proxy=get_proxy())
-    raw_ugc_list = ugc_data.get('data', [])
-    ugc_assets = {str(item['assetId']): [item['userAssetId']] for item in raw_ugc_list}
-
-    # MERGE INVENTORIES
-    my_assets = {**standard_assets, **ugc_assets}
+    # Fallback to Rolimons cache if Roblox API fails (usually due to private inventory)
+    if not roblox_success and not my_assets:
+        log_to_discord("⚠️ Roblox inventory check failed (likely private). Falling back to Rolimons cache. 'On Hold' items cannot be skipped.")
+        inv_data = safe_get_json(f"https://api.rolimons.com/players/v1/playerassets/{PLAYER_ID}", timeout=15)
+        my_assets = inv_data.get('playerAssets') or inv_data.get('assets') or {}
+        
     item_details = safe_get_json("https://api.rolimons.com/items/v1/itemdetails").get('items', {})
 
     if not my_assets:
