@@ -44,4 +44,5 @@ jobs:
           CREATE_FAIR_TRADE: 'true'     # Finds and requests for items worth about as much as your items
           ALTERNATE_POSTS: 'true'    # Switches between Tags and Items every 10 mins
           EXCLUDE_RARES: 'true'
+          NOT_FOR_TRADE_IDS: '1234567, 226189871'
         run: python main.py
