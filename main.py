@@ -2,6 +2,7 @@ import os
 import time
 import random
 #import requests
+import cloudscraper
 from curl_cffi import requests
 from datetime import datetime
 
