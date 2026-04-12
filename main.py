@@ -170,6 +170,7 @@ def get_outbid_status(my_assets, item_details):
                 "name": name,
                 "current_floor": market_floor,
                 "RAP": item['price']
+            })
         
         time.sleep(1) # Anti-rate-limit delay
 
