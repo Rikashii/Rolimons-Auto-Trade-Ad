@@ -3,6 +3,8 @@ import time
 import random
 #import requests
 import cloudscraper
+import re
+import json
 from curl_cffi import requests
 from datetime import datetime
 
