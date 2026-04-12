@@ -350,9 +350,9 @@ def main():
         payload = {"player_id": int(PLAYER_ID), "offer_item_ids": offer_ids, "request_item_ids": request_ids, "request_tags": active_request_tags}
         posted = False
         for attempt in range(3):
-            proxy = get_proxy()
+            #proxy = get_proxy()
             try:
-                res = session.post("https://api.rolimons.com/tradeads/v1/createad", json=payload, proxies=proxy, timeout=15)
+                res = session.post("https://api.rolimons.com/tradeads/v1/createad", json=payload, proxies=None, timeout=15)
                 if res.status_code in [200, 201]:
                     send_visual_webhook(offering_metadata, request_ids, "✅ Ad posted successfully!")
                     posted = True
