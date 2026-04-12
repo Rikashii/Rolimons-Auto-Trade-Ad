@@ -53,14 +53,34 @@ def safe_get_json(url, timeout=10, proxy=None):
         log_to_discord(f"Request failed for {url}: {e}")
         return {}
 
-def get_proxy():
-    if not WEBSHARE_URL: return None
+PROXY_LIST = []
+
+def load_proxies():
+    """Fetches the proxy list from Webshare ONCE at startup."""
+    global PROXY_LIST
+    if not WEBSHARE_URL: 
+        return
     try:
         res = requests.get(WEBSHARE_URL, timeout=10)
-        proxy = random.choice(res.text.strip().splitlines()).split(':')
-        formatted = f"http://{proxy[2]}:{proxy[3]}@{proxy[0]}:{proxy[1]}"
+        if res.status_code == 200:
+            PROXY_LIST = res.text.strip().splitlines()
+            log_to_discord(f"✅ Successfully loaded {len(PROXY_LIST)} proxies into memory.")
+        else:
+            log_to_discord(f"⚠️ Failed to load proxies. Webshare returned status: {res.status_code}")
+    except Exception as e:
+        log_to_discord(f"❌ Error loading proxies: {e}")
+
+def get_proxy():
+    """Returns a random proxy from the local cache."""
+    if not PROXY_LIST: 
+        return None
+    try:
+        proxy_data = random.choice(PROXY_LIST).split(':')
+        # Assuming format is IP:PORT:USERNAME:PASSWORD
+        formatted = f"http://{proxy_data[2]}:{proxy_data[3]}@{proxy_data[0]}:{proxy_data[1]}"
         return {"http": formatted, "https": formatted}
-    except: return None
+    except Exception as e:
+        return None
 
 def get_ugc_inventory():
     scraper = cloudscraper.create_scraper()
@@ -291,6 +311,7 @@ def send_visual_webhook(offering_metadata, requesting_ids, status_msg, success=T
     requests.post(WEBHOOK_URL, json={"embeds": [embed], "username": "OxK's Trade Ad Bot"})
 
 def main():
+    load_proxies()
     log_to_discord(f"🚀 Bot Sequence Started at {datetime.now().strftime('%H:%M:%S')}")
 
     # Divides epoch time by 600 (10 mins). If even, True. If odd, False.
