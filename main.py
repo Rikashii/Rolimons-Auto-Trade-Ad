@@ -168,7 +168,8 @@ def get_outbid_status(my_assets, item_details):
         else:
             not_onsale_items.append({
                 "name": name,
-                "current_floor": market_floor
+                "current_floor": market_floor,
+                "RAP": item['price']
         
         time.sleep(1) # Anti-rate-limit delay
 
@@ -176,9 +177,12 @@ def get_outbid_status(my_assets, item_details):
     log_to_discord(f"🏁 Checked {len(top_ugc)} items. Found {len(outbid_items)} outbids.")
     
     if outbid_items:
-        send_outbid_alert(outbid_list)
+        send_outbid_alert(outbid_items)
     else:
         log_to_discord("✅ No items currently outbid.")
+
+    if not_onsale_items:
+        send_item_alert(not_onsale_items)
 
 def send_outbid_alert(items):
     if not OUTBID_WEBHOOK_URL or not items: return
@@ -212,7 +216,7 @@ def send_item_alert(items):
     payload = {
         "username": "Outbid Tracker",
         "embeds": [{
-            "title": "⚠️ Outbid on Limiteds!",
+            "title": "Items to list",
             "color": 0xffcc00,
             "fields": fields,
             "footer": {"text": f"OxK | Checked: {datetime.now().strftime('%I:%M %p')}"}
