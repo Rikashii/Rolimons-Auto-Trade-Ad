@@ -192,8 +192,8 @@ def send_outbid_alert(items):
     fields = []
     for item in items:
         fields.append({
-            "name": f"🚨[**{item['name']}**](https://www.roblox.com/catalog/{item['id']})",
-            "value": f"**Your Price:** {item['your_price']} R$\n**Lowest Price:** {item['current_floor']} R$\n**Gap:** -{item['diff']} R$",
+            "name": f"🚨**Item Details**",
+            "value": f"[**{item['name']}**](https://www.roblox.com/catalog/{item['id']})\n**Your Price:** {item['your_price']} R$\n**Lowest Price:** {item['current_floor']} R$\n**Gap:** -{item['diff']} R$",
             "inline": True
         })
     payload = {
@@ -212,8 +212,12 @@ def send_item_alert(items):
     fields = []
     for item in items:
         fields.append({
-            "name": f"[**{item['name']}**](https://www.roblox.com/catalog/{item['id']})",
-            "value": f"**Lowest Price:** {item['current_floor']}\n**RAP:** {item['RAP']}",
+            "name": "**Item Details**",
+            "value": (
+                f"[**{item['name']}**](https://www.roblox.com/catalog/{item['id']})\n"
+                f"**Price:** {item['current_floor']}\n"
+                f"**RAP:** {item['RAP']}"
+            ),
             "inline": True
         })
     payload = {
