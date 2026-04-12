@@ -82,10 +82,8 @@ def get_ugc_inventory():
                 if not data:
                     print(f"Variable found, but it is empty ({{}}). User {user_id} likely has no UGC Limiteds.")
                 else:
-                    output = json.dumps(data, indent=4)
                     print("--- UGC Inventory Found ---")
-                    print(output)
-                    return output
+                    return data
             except json.JSONDecodeError:
                 print("Found the variable, but the data format was corrupted.")
         else:
