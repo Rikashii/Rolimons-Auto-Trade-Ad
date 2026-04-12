@@ -76,8 +76,8 @@ def get_proxy():
     # We return the dictionary directly. Webshare handles the '100 proxies' 
     # rotation internally via that -rotate username.
     return {
-        "http": ROTATING_PROXY_URL,
-        "https": ROTATING_PROXY_URL
+        "http": WEBSHARE_URL,
+        "https": WEBSHARE_URL
     }
 
 def get_ugc_inventory():
