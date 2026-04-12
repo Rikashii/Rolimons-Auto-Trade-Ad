@@ -352,7 +352,7 @@ def main():
         for attempt in range(3):
             #proxy = get_proxy()
             try:
-                res = session.post("https://api.rolimons.com/tradeads/v1/createad", json=payload, proxies=None, timeout=15)
+                res = session.post("https://api.rolimons.com/tradeads/v1/createad", json=payload, timeout=15)
                 if res.status_code in [200, 201]:
                     send_visual_webhook(offering_metadata, request_ids, "✅ Ad posted successfully!")
                     posted = True
@@ -361,7 +361,9 @@ def main():
                     send_visual_webhook(offering_metadata, request_ids, "⏳ Cooldown active.", False)
                     posted = True
                     break
-            except: pass
+            except Exception as e:
+                print(f"ERROR: {e}")
+                pass
             time.sleep(5)
         if not posted:
             send_visual_webhook(offering_metadata, request_ids, "❌ Failed to post ad.", False)
