@@ -38,7 +38,7 @@ def safe_get_json(url, timeout=10, proxy=None):
     """Safely fetches JSON and ensures it is a dictionary, not a string."""
     headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"}
     try:
-        res = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'}, timeout=timeout, proxies=proxy, impersonate="chrome120")
+        res = requests.get(url, headers=headers, timeout=timeout, proxies=proxy, impersonate="chrome120")
         # Handle cases where Roblox returns a non-200 status (like 429 or 403)
         if res.status_code != 200:
             log_to_discord(f"⚠️ API Error {res.status_code} for URL: {url}")
