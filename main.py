@@ -247,7 +247,7 @@ def main():
         inv_data = safe_get_json(f"https://api.rolimons.com/players/v1/playerassets/{PLAYER_ID}", timeout=15)
         my_assets = inv_data.get('playerAssets') or inv_data.get('assets') or {}
         
-    item_details = safe_get_json("https://api.rolimons.com/items/v1/itemdetails").get('items', {})
+    item_details = safe_get_json("https://api.rolimons.com/items/v2/itemdetails").get('items', {})
 
     if not my_assets:
         log_to_discord("❌ Error: Inventory empty or private.")
