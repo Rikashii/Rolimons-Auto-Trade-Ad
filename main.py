@@ -136,7 +136,7 @@ def get_outbid_status(my_assets, item_details):
         })
 
     inventory.sort(key=lambda x: x['price'], reverse=True)
-    top_ugc = inventory[:50] # Limit to top 20 expensive items
+    top_ugc = inventory[:200] # Limit to top 20 expensive items
 
     if not top_ugc:
         log_to_discord("✅ No UGC items found to check.")
