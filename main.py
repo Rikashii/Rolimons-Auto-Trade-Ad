@@ -1,7 +1,8 @@
 import os
 import time
 import random
-import requests
+#import requests
+from curl_cffi import requests
 from datetime import datetime
 
 # CONFIGURATION
@@ -35,8 +36,9 @@ def log_to_discord(message, target_url=None):
 
 def safe_get_json(url, timeout=10, proxy=None):
     """Safely fetches JSON and ensures it is a dictionary, not a string."""
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"}
     try:
-        res = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'}, proxies=proxy, timeout=timeout)
+        res = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'}, timeout=timeout, proxies=proxy, impersonate="chrome120")
         # Handle cases where Roblox returns a non-200 status (like 429 or 403)
         if res.status_code != 200:
             log_to_discord(f"⚠️ API Error {res.status_code} for URL: {url}")
@@ -161,10 +163,10 @@ def get_player_metadata():
 
 def get_item_metadata(target_ids):
     proxy = get_proxy() # Fetch the Webshare proxy
-    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36"}
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"}
     
     try:
-        res = requests.get("https://api.rolimons.com/items/v2/itemdetails", headers=headers, proxies=proxy, timeout=10).json()
+        res = requests.get("https://api.rolimons.com/items/v2/itemdetails", headers=headers, proxies=proxy, impersonate="chrome120", timeout=10).json()
         items_map = res.get("items", {})
         results = []
         for tid in target_ids:
@@ -346,8 +348,13 @@ def main():
             else:
                 log_to_discord(f"⚠️ Auto Fair Trade: Could not find matches. Using defaults.")
 
-        session = requests.Session()
-        session.headers.update({'User-Agent': 'Mozilla/5.0', 'Content-Type': 'application/json', 'Origin': 'https://www.rolimons.com', 'Referer': 'https://www.rolimons.com/tradeads'})
+        session = requests.Session(impersonate="chrome120")
+        session.headers.update({
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36', 
+            'Content-Type': 'application/json', 
+            'Origin': 'https://www.rolimons.com', 
+            'Referer': 'https://www.rolimons.com/tradeads'
+        })
         session.cookies.set('_RoliVerification', COOKIE, domain='.rolimons.com')
         
         payload = {"player_id": int(PLAYER_ID), "offer_item_ids": offer_ids, "request_item_ids": request_ids, "request_tags": active_request_tags}
