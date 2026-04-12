@@ -59,15 +59,15 @@ def safe_get_json(url, timeout=12, max_retries=5):
             if res.status_code == 429:
                 # Wait longer each time we hit a 429 (Exponential Backoff)
                 wait_time = (attempt + 1) * 2 
-                print(f"⚠️ 429 Rate Limit on {url}. Proxy rotating... Waiting {wait_time}s")
+                log_to_discord(f"⚠️ 429 Rate Limit on {url}. Proxy rotating... Waiting {wait_time}s")
                 time.sleep(wait_time)
                 continue
             if res.status_code == 403:
-                print(f"🚫 403 Forbidden. This proxy IP might be blacklisted by Roblox. Retrying...")
+                log_to_discord(f"🚫 403 Forbidden. This proxy IP might be blacklisted by Roblox. Retrying...")
                 time.sleep(1)
                 continue
         except Exception as e:
-            print(f"📡 Proxy Connection Error (Attempt {attempt+1}): {e}")
+            log_to_discord(f"📡 Proxy Connection Error (Attempt {attempt+1}): {e}")
             time.sleep(1)
     return {}
 
@@ -98,12 +98,12 @@ def get_ugc_inventory():
                 data = json.loads(raw_json)
                 
                 if not data:
-                    print(f"Variable found, but it is empty ({{}}). User {user_id} likely has no UGC Limiteds.")
+                    log_to_discord(f"Variable found, but it is empty ({{}}). User {user_id} likely has no UGC Limiteds.")
                 else:
-                    print("--- UGC Inventory Found ---")
+                    log_to_discord("--- UGC Inventory Found ---")
                     return data
             except json.JSONDecodeError:
-                print("Found the variable, but the data format was corrupted.")
+                log_to_discord("Found the variable, but the data format was corrupted.")
         else:
             print("Could not find 'player_ugc_assets_raw' in the page source.")
             # Debug: Save the HTML to a file to see what the script sees
@@ -111,7 +111,7 @@ def get_ugc_inventory():
                 f.write(response.text)
             print("Page source saved to debug_page.html for inspection.")
     else:
-        print(f"Blocked by Cloudflare. Status: {response.status_code}")
+        log_to_discord(f"Blocked by Cloudflare. Status: {response.status_code}")
 
 def get_outbid_status(my_assets, item_details):
     outbid_items = []
@@ -146,52 +146,56 @@ def get_outbid_status(my_assets, item_details):
     preview_names = [f"- {i['name']} ({i['price']} R$)" for i in top_ugc]
     log_to_discord("📋 **Checking Outbid Status for:**\n" + "\n".join(preview_names))
 
-    for item in top_ugc:
-        asset_id = item['id']
-        name = item['name']
-
-        # Step A: Get Collectible ID and Creator
-        m_url = f"https://catalog.roblox.com/v1/catalog/items/{asset_id}/details?itemType=Asset"
-        m_data = safe_get_json(m_url)
-        
-        # SKIP IF CREATED BY ROBLOX (ID 1)
-        if CHECK_ONLY_UGC and m_data.get('creatorTargetId') == 1:
-            continue
-
-        collect_id = m_data.get('collectibleItemId')
-        market_floor = m_data.get('lowestResalePrice') or m_data.get('price') or 0
-        
-        if not collect_id or market_floor == 0:
-            time.sleep(1)
-            continue
-
-        # Step B: Check Resellers
-        r_url = f"https://apis.roblox.com/marketplace-sales/v1/item/{collect_id}/resellers?limit=100"
-        r_data = safe_get_json(r_url)
-        reseller_list = r_data.get('data', [])
-
-        # Find your own listing
-        my_listings = [r for r in reseller_list if str(r.get('seller', {}).get('sellerId')) == str(PLAYER_ID)]
-        
-        if my_listings:
-            my_min = min(l['price'] for l in my_listings)
-            if market_floor < my_min:
-                outbid_items.append({
+    total = len(top_ugc)
+    batch_size = 20
+    for i in range(0, total, batch_size):
+        for item in top_ugc:
+            asset_id = item['id']
+            name = item['name']
+    
+            # Step A: Get Collectible ID and Creator
+            m_url = f"https://catalog.roblox.com/v1/catalog/items/{asset_id}/details?itemType=Asset"
+            m_data = safe_get_json(m_url)
+            
+            # SKIP IF CREATED BY ROBLOX (ID 1)
+            if CHECK_ONLY_UGC and m_data.get('creatorTargetId') == 1:
+                continue
+    
+            collect_id = m_data.get('collectibleItemId')
+            market_floor = m_data.get('lowestResalePrice') or m_data.get('price') or 0
+            
+            if not collect_id or market_floor == 0:
+                time.sleep(0.5)
+                continue
+    
+            # Step B: Check Resellers
+            r_url = f"https://apis.roblox.com/marketplace-sales/v1/item/{collect_id}/resellers?limit=100"
+            r_data = safe_get_json(r_url)
+            reseller_list = r_data.get('data', [])
+    
+            # Find your own listing
+            my_listings = [r for r in reseller_list if str(r.get('seller', {}).get('sellerId')) == str(PLAYER_ID)]
+            
+            if my_listings:
+                my_min = min(l['price'] for l in my_listings)
+                if market_floor < my_min:
+                    outbid_items.append({
+                        "name": name,
+                        "your_price": my_min,
+                        "current_floor": market_floor,
+                        "diff": my_min - market_floor,
+                        "id": asset_id
+                    })
+            else:
+                not_onsale_items.append({
                     "name": name,
-                    "your_price": my_min,
                     "current_floor": market_floor,
-                    "diff": my_min - market_floor,
+                    "RAP": item['price'],
                     "id": asset_id
                 })
-        else:
-            not_onsale_items.append({
-                "name": name,
-                "current_floor": market_floor,
-                "RAP": item['price'],
-                "id": asset_id
-            })
-        
-        time.sleep(1) # Anti-rate-limit delay
+            
+            time.sleep(0.5) # Anti-rate-limit delay
+        time.sleep(2)
 
     # Summary
     log_to_discord(f"🏁 Checked {len(top_ugc)} items. Found {len(outbid_items)} outbids.")
