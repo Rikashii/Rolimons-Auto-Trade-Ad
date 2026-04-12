@@ -30,6 +30,7 @@ NOT_FOR_TRADE_IDS = [int(i.strip()) for i in os.environ.get("NOT_FOR_TRADE_IDS",
 CHECK_ONLY_UGC = True
 
 def log_to_discord(message, target_url=None):
+    print(message)
     """Sends a simple, non-embed text message to Discord."""
     target_url = target_url or LOG_WEBHOOK_URL
     if not target_url: return
@@ -37,7 +38,7 @@ def log_to_discord(message, target_url=None):
         requests.post(target_url, json={"content": str(message)}, timeout=10)
     except: pass
 
-def safe_get_json(url, timeout=12, max_retries=5):
+def safe_get_json(url, timeout=5, max_retries=3):
     """Fetches JSON using the rotating proxy with aggressive retries."""
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
@@ -136,7 +137,7 @@ def get_outbid_status(my_assets, item_details):
         })
 
     inventory.sort(key=lambda x: x['price'], reverse=True)
-    top_ugc = inventory[:200] # Limit to top 20 expensive items
+    top_ugc = inventory[:50] # Limit to top 20 expensive items
 
     if not top_ugc:
         log_to_discord("✅ No UGC items found to check.")
@@ -251,8 +252,6 @@ def send_item_alert(items):
         }]
     }
     requests.post(OUTBID_WEBHOOK_URL, json=payload)
-
-
 
 def get_player_metadata():
     username, headshot, display_name = "Unknown", "https://www.roblox.com/images/tree_small.png", "Unknown"
