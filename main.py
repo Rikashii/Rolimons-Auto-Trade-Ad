@@ -182,11 +182,10 @@ def get_outbid_status(my_assets, item_details):
     for item in top_ugc:
         asset_id = item['id']
         name = item['name']
-        proxy = get_proxy()
 
         # Step A: Get Collectible ID and Creator
         m_url = f"https://catalog.roblox.com/v1/catalog/items/{asset_id}/details?itemType=Asset"
-        m_data = safe_get_json(m_url, proxy=proxy)
+        m_data = safe_get_json(m_url)
         
         # SKIP IF CREATED BY ROBLOX (ID 1)
         if CHECK_ONLY_UGC and m_data.get('creatorTargetId') == 1:
@@ -201,7 +200,7 @@ def get_outbid_status(my_assets, item_details):
 
         # Step B: Check Resellers
         r_url = f"https://apis.roblox.com/marketplace-sales/v1/item/{collect_id}/resellers?limit=100"
-        r_data = safe_get_json(r_url, proxy=proxy)
+        r_data = safe_get_json(r_url)
         reseller_list = r_data.get('data', [])
 
         # Find your own listing
@@ -363,7 +362,7 @@ def main():
         if cursor:
             url += f"&cursor={cursor}"
             
-        data = safe_get_json(url, timeout=15, proxy=get_proxy())
+        data = safe_get_json(url, timeout=15)
         
         if 'data' in data:
             roblox_success = True
