@@ -36,7 +36,7 @@ def log_to_discord(message, target_url=None):
 def safe_get_json(url, timeout=10, proxy=None):
     """Safely fetches JSON and ensures it is a dictionary, not a string."""
     try:
-        res = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'}, proxies=proxy timeout=timeout)
+        res = requests.get(url, headers={'User-Agent': 'Mozilla/5.0'}, proxies=proxy, timeout=timeout)
         # Handle cases where Roblox returns a non-200 status (like 429 or 403)
         if res.status_code != 200:
             log_to_discord(f"⚠️ API Error {res.status_code} for URL: {url}")
