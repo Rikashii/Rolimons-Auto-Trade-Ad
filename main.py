@@ -59,20 +59,64 @@ def get_proxy():
         return {"http": formatted, "https": formatted}
     except: return None
 
+def get_ugc_inventory():
+    scraper = cloudscraper.create_scraper()
+    url = f"https://www.rolimons.com/player/{PLAYER_ID}"
+    
+    response = scraper.get(url)
+    
+    if response.status_code == 200:
+        # This regex looks for the variable assignment and captures everything until the semicolon
+        # It handles newlines and spaces much better
+        pattern = r'var\s+player_ugc_assets_raw\s*=\s*(\{.*?\});'
+        match = re.search(pattern, response.text, re.DOTALL)
+        
+        if match:
+            try:
+                raw_json = match.group(1)
+                data = json.loads(raw_json)
+                
+                if not data:
+                    print(f"Variable found, but it is empty ({{}}). User {user_id} likely has no UGC Limiteds.")
+                else:
+                    output = json.dumps(data, indent=4)
+                    print("--- UGC Inventory Found ---")
+                    print(output)
+                    return output
+            except json.JSONDecodeError:
+                print("Found the variable, but the data format was corrupted.")
+        else:
+            print("Could not find 'player_ugc_assets_raw' in the page source.")
+            # Debug: Save the HTML to a file to see what the script sees
+            with open("debug_page.html", "w", encoding="utf-8") as f:
+                f.write(response.text)
+            print("Page source saved to debug_page.html for inspection.")
+    else:
+        print(f"Blocked by Cloudflare. Status: {response.status_code}")
+
 def get_outbid_status(my_assets, item_details):
     outbid_items = []
-    ugc_list = []
-
+    inventory = []
+    
     # 1. Filter for potential UGC (ID > 1B) and sort by price
     for asset_id in my_assets.keys():
         asset_str = str(asset_id)
         if asset_str in item_details:
-            if not CHECK_ONLY_UGC or int(asset_id) > 12000000000:
+            if not CHECK_ONLY_UGC:
                 price = item_details[asset_str][2] or 0
-                ugc_list.append({"id": asset_id, "name": item_details[asset_str][0], "price": price})
+                inventory.append({"id": asset_id, "name": item_details[asset_str][0], "price": price})
 
-    ugc_list.sort(key=lambda x: x['price'], reverse=True)
-    top_ugc = ugc_list[:20] # Limit to top 20 expensive items
+    ugc_inventory = get_ugc_inventory()
+    for item_id, details in ugc_inventory.items():
+        # Details index: 1 is Name, 2 is RAP
+        inventory.append({
+            "id": details[0],
+            "name": details[1],
+            "price": details[2] or 0
+        })
+
+    inventory.sort(key=lambda x: x['price'], reverse=True)
+    top_ugc = inventory[:50] # Limit to top 20 expensive items
 
     if not top_ugc:
         log_to_discord("✅ No UGC items found to check.")
@@ -120,7 +164,7 @@ def get_outbid_status(my_assets, item_details):
                     "diff": my_min - market_floor
                 })
         
-        time.sleep(0.5) # Anti-rate-limit delay
+        time.sleep(1) # Anti-rate-limit delay
 
     # Summary
     log_to_discord(f"🏁 Checked {len(top_ugc)} items. Found {len(outbid_items)} outbids.")
