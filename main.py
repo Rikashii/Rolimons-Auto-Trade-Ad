@@ -8,8 +8,6 @@ import json
 from curl_cffi import requests
 from datetime import datetime
 
-PROXY_LIST = []
-
 # CONFIGURATION
 PLAYER_ID = os.environ.get("PLAYER_ID")
 COOKIE = os.environ.get("ROLI_COOKIE")
@@ -39,79 +37,48 @@ def log_to_discord(message, target_url=None):
         requests.post(target_url, json={"content": str(message)}, timeout=10)
     except: pass
 
-def safe_get_json(url, timeout=10, max_retries=5):
-    """Safely fetches JSON, retrying with different proxies on failure or 429s."""
+def safe_get_json(url, timeout=12, max_retries=5):
+    """Fetches JSON using the rotating proxy with aggressive retries."""
     headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
+        "Accept": "application/json",
     }
-    
+    proxy = get_proxy()
     for attempt in range(max_retries):
-        # Grab a fresh, random proxy from your loaded memory list for EVERY attempt
-        proxy = get_proxy() 
-        
         try:
-            res = requests.get(url, headers=headers, timeout=timeout, proxies=proxy, impersonate="chrome120")
-            
-            # Success!
+            # We use impersonate="chrome120" to look like a real browser
+            res = requests.get(
+                url, 
+                headers=headers, 
+                proxies=proxy, 
+                timeout=timeout, 
+                impersonate="chrome120"
+            )
             if res.status_code == 200:
-                return res.json()
-                
-            # Rate Limited (429)
-            elif res.status_code == 429:
-                # Extract just the IP for cleaner logging, or default to "Local"
-                proxy_ip = proxy['http'].split('@')[-1] if proxy else "Local IP"
-                print(f"⚠️ 429 Rate Limit (Attempt {attempt + 1}/{max_retries}) using {proxy_ip}. Retrying...")
-                
-                # Add a small, randomized delay so you don't instantly burn through proxies
-                time.sleep(random.uniform(1.5, 3.0)) 
-                continue 
-                
-            # Other client errors (e.g., 400 Bad Request, 404 Not Found) - No point in retrying
-            elif res.status_code in [400, 403, 404]:
-                log_to_discord(f"⚠️ Unrecoverable API Error {res.status_code} for URL: {url}")
-                return {}
-                
-            # Server errors (5xx) - Might be worth retrying
-            else:
-                print(f"⚠️ Server Error {res.status_code} for URL: {url}. Retrying...")
-                time.sleep(2)
+                return res.json() 
+            if res.status_code == 429:
+                # Wait longer each time we hit a 429 (Exponential Backoff)
+                wait_time = (attempt + 1) * 2 
+                print(f"⚠️ 429 Rate Limit on {url}. Proxy rotating... Waiting {wait_time}s")
+                time.sleep(wait_time)
                 continue
-                
+            if res.status_code == 403:
+                print(f"🚫 403 Forbidden. This proxy IP might be blacklisted by Roblox. Retrying...")
+                time.sleep(1)
+                continue
         except Exception as e:
-            print(f"❌ Request failed for {url} (Attempt {attempt + 1}): {e}")
+            print(f"📡 Proxy Connection Error (Attempt {attempt+1}): {e}")
             time.sleep(1)
-            
-    # If the loop finishes without returning, we failed all retries
-    log_to_discord(f"🚨 Max retries ({max_retries}) reached for {url}. Giving up on this item.")
     return {}
 
-
-def load_proxies():
-    """Fetches the proxy list from Webshare ONCE at startup."""
-    global PROXY_LIST
-    if not WEBSHARE_URL: 
-        return
-    try:
-        res = requests.get(WEBSHARE_URL, timeout=10)
-        if res.status_code == 200:
-            PROXY_LIST = res.text.strip().splitlines()
-            log_to_discord(f"✅ Successfully loaded {len(PROXY_LIST)} proxies into memory.")
-        else:
-            log_to_discord(f"⚠️ Failed to load proxies. Webshare returned status: {res.status_code}")
-    except Exception as e:
-        log_to_discord(f"❌ Error loading proxies: {e}")
-
 def get_proxy():
-    """Returns a random proxy from the local cache."""
-    if not PROXY_LIST: 
-        return None
-    try:
-        proxy_data = random.choice(PROXY_LIST).split(':')
-        # Assuming format is IP:PORT:USERNAME:PASSWORD
-        formatted = f"http://{proxy_data[2]}:{proxy_data[3]}@{proxy_data[0]}:{proxy_data[1]}"
-        return {"http": formatted, "https": formatted}
-    except Exception as e:
-        return None
+    """Returns the rotating proxy dictionary for requests."""
+    # We return the dictionary directly. Webshare handles the '100 proxies' 
+    # rotation internally via that -rotate username.
+    return {
+        "http": ROTATING_PROXY_URL,
+        "https": ROTATING_PROXY_URL
+    }
 
 def get_ugc_inventory():
     scraper = cloudscraper.create_scraper()
@@ -341,7 +308,6 @@ def send_visual_webhook(offering_metadata, requesting_ids, status_msg, success=T
     requests.post(WEBHOOK_URL, json={"embeds": [embed], "username": "OxK's Trade Ad Bot"})
 
 def main():
-    load_proxies()
     log_to_discord(f"🚀 Bot Sequence Started at {datetime.now().strftime('%H:%M:%S')}")
 
     # Divides epoch time by 600 (10 mins). If even, True. If odd, False.
