@@ -163,13 +163,15 @@ def get_outbid_status(my_assets, item_details):
                     "name": name,
                     "your_price": my_min,
                     "current_floor": market_floor,
-                    "diff": my_min - market_floor
+                    "diff": my_min - market_floor,
+                    "id": asset_id
                 })
         else:
             not_onsale_items.append({
                 "name": name,
                 "current_floor": market_floor,
                 "RAP": item['price']
+                "id": asset_id
             })
         
         time.sleep(1) # Anti-rate-limit delay
