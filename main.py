@@ -27,7 +27,7 @@ ALTERNATE_POSTS = os.environ.get("ALTERNATE_POSTS", "true").lower() == "true"
 EXCLUDE_RARES = os.environ.get("EXCLUDE_RARES", "true").lower() == "true"
 NOT_FOR_TRADE_IDS = [int(i.strip()) for i in os.environ.get("NOT_FOR_TRADE_IDS", "").split(",") if i.strip()]
 
-CHECK_ONLY_UGC = False
+CHECK_ONLY_UGC = True
 
 def log_to_discord(message, target_url=None):
     """Sends a simple, non-embed text message to Discord."""
@@ -97,6 +97,7 @@ def get_ugc_inventory():
 
 def get_outbid_status(my_assets, item_details):
     outbid_items = []
+    not_onsale_items = []
     inventory = []
     
     # 1. Filter for potential UGC (ID > 1B) and sort by price
@@ -164,20 +165,48 @@ def get_outbid_status(my_assets, item_details):
                     "current_floor": market_floor,
                     "diff": my_min - market_floor
                 })
+        else:
+            not_onsale_items.append({
+                "name": name,
+                "current_floor": market_floor
         
         time.sleep(1) # Anti-rate-limit delay
 
     # Summary
     log_to_discord(f"🏁 Checked {len(top_ugc)} items. Found {len(outbid_items)} outbids.")
-    return outbid_items
+    
+    if outbid_items:
+        send_outbid_alert(outbid_list)
+    else:
+        log_to_discord("✅ No items currently outbid.")
 
 def send_outbid_alert(items):
     if not OUTBID_WEBHOOK_URL or not items: return
     fields = []
     for item in items:
         fields.append({
-            "name": f"🚨 {item['name']}",
+            "name": f"🚨[**{item['name']}**](https://www.roblox.com/catalog/{asset_id})",
             "value": f"**Your Price:** {item['your_price']} R$\n**Lowest Price:** {item['current_floor']} R$\n**Gap:** -{item['diff']} R$",
+            "inline": True
+        })
+    payload = {
+        "username": "Outbid Tracker",
+        "embeds": [{
+            "title": "⚠️ Outbid on Limiteds!",
+            "color": 0xffcc00,
+            "fields": fields,
+            "footer": {"text": f"OxK | Checked: {datetime.now().strftime('%I:%M %p')}"}
+        }]
+    }
+    requests.post(OUTBID_WEBHOOK_URL, json=payload)
+
+def send_item_alert(items):
+    if not OUTBID_WEBHOOK_URL or not items: return
+    fields = []
+    for item in items:
+        fields.append({
+            "name": f"[**{item['name']}**](https://www.roblox.com/catalog/{asset_id})",
+            "value": f"**Lowest Price:** {item['current_floor']}",
             "inline": True
         })
     payload = {
@@ -425,11 +454,7 @@ def main():
 
     # 3. OUTBID MONITORING
     if MONITOR_OUTBID:
-        outbid_list = get_outbid_status(my_assets, item_details)
-        if outbid_list:
-            send_outbid_alert(outbid_list)
-        else:
-            log_to_discord("✅ No items currently outbid.")
+        get_outbid_status(my_assets, item_details)
 
 if __name__ == "__main__":
     main()
