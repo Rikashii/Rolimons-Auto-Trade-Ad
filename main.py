@@ -210,7 +210,7 @@ def send_item_alert(items):
     for item in items:
         fields.append({
             "name": f"[**{item['name']}**](https://www.roblox.com/catalog/{asset_id})",
-            "value": f"**Lowest Price:** {item['current_floor']}",
+            "value": f"**Lowest Price:** {item['current_floor']}\n**RAP:** {item['RAP']}",
             "inline": True
         })
     payload = {
