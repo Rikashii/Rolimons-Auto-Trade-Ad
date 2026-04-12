@@ -170,7 +170,7 @@ def get_outbid_status(my_assets, item_details):
             not_onsale_items.append({
                 "name": name,
                 "current_floor": market_floor,
-                "RAP": item['price']
+                "RAP": item['price'],
                 "id": asset_id
             })
         
