@@ -160,8 +160,11 @@ def get_player_metadata():
     return username, headshot, display_name
 
 def get_item_metadata(target_ids):
+    proxy = get_proxy() # Fetch the Webshare proxy
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36"}
+    
     try:
-        res = requests.get("https://api.rolimons.com/items/v2/itemdetails", timeout=10).json()
+        res = requests.get("https://api.rolimons.com/items/v2/itemdetails", headers=headers, proxies=proxy, timeout=10).json()
         items_map = res.get("items", {})
         results = []
         for tid in target_ids:
