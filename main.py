@@ -147,67 +147,65 @@ def get_outbid_status(my_assets, item_details):
     preview_names = [f"- {i['name']} ({i['price']} R$)" for i in top_ugc]
     log_to_discord("📋 **Checking Outbid Status for:**\n" + "\n".join(preview_names))
 
-    total = len(top_ugc)
-    batch_size = 20
-    for i in range(0, total, batch_size):
-        for item in top_ugc:
-            asset_id = item['id']
-            name = item['name']
-    
-            # Step A: Get Collectible ID and Creator
-            m_url = f"https://catalog.roblox.com/v1/catalog/items/{asset_id}/details?itemType=Asset"
-            m_data = safe_get_json(m_url)
-            
-            # SKIP IF CREATED BY ROBLOX (ID 1)
-            if CHECK_ONLY_UGC and m_data.get('creatorTargetId') == 1:
-                continue
-    
-            collect_id = m_data.get('collectibleItemId')
-            market_floor = m_data.get('lowestResalePrice') or m_data.get('price') or 0
-            
-            if not collect_id or market_floor == 0:
-                time.sleep(0.5)
-                continue
-    
-            # Step B: Check Resellers
-            r_url = f"https://apis.roblox.com/marketplace-sales/v1/item/{collect_id}/resellers?limit=100"
-            r_data = safe_get_json(r_url)
-            reseller_list = r_data.get('data', [])
-    
-            # Find your own listing
-            my_listings = [r for r in reseller_list if str(r.get('seller', {}).get('sellerId')) == str(PLAYER_ID)]
-            
-            if my_listings:
-                my_min = min(l['price'] for l in my_listings)
-                if market_floor < my_min:
-                    outbid_items.append({
-                        "name": name,
-                        "your_price": my_min,
-                        "current_floor": market_floor,
-                        "diff": my_min - market_floor,
-                        "id": asset_id
-                    })
-            else:
-                not_onsale_items.append({
+    for item in top_ugc:
+        asset_id = item['id']
+        name = item['name']
+
+        # Step A: Get Collectible ID and Creator
+        m_url = f"https://catalog.roblox.com/v1/catalog/items/{asset_id}/details?itemType=Asset"
+        m_data = safe_get_json(m_url)
+        
+        # SKIP IF CREATED BY ROBLOX (ID 1)
+        if CHECK_ONLY_UGC and m_data.get('creatorTargetId') == 1:
+            continue
+
+        collect_id = m_data.get('collectibleItemId')
+        market_floor = m_data.get('lowestResalePrice') or m_data.get('price') or 0
+        
+        if not collect_id or market_floor == 0:
+            time.sleep(0.4)
+            continue
+
+        # Step B: Check Resellers
+        r_url = f"https://apis.roblox.com/marketplace-sales/v1/item/{collect_id}/resellers?limit=100"
+        r_data = safe_get_json(r_url)
+        reseller_list = r_data.get('data', [])
+
+        # Find your own listing
+        my_listings = [r for r in reseller_list if str(r.get('seller', {}).get('sellerId')) == str(PLAYER_ID)]
+        
+        if my_listings:
+            my_min = min(l['price'] for l in my_listings)
+            if market_floor < my_min:
+                outbid_items.append({
                     "name": name,
+                    "your_price": my_min,
                     "current_floor": market_floor,
-                    "RAP": item['price'],
+                    "diff": my_min - market_floor,
                     "id": asset_id
                 })
-            
-            time.sleep(0.5) # Anti-rate-limit delay
-        time.sleep(2)
+        else:
+            not_onsale_items.append({
+                "name": name,
+                "current_floor": market_floor,
+                "RAP": item['price'],
+                "id": asset_id
+            })
+        
+        time.sleep(0.6) # Anti-rate-limit delay
 
     # Summary
     log_to_discord(f"🏁 Checked {len(top_ugc)} items. Found {len(outbid_items)} outbids.")
     
     if outbid_items:
-        send_outbid_alert(outbid_items)
+        for i in range(0, len(outbid_items), 10):
+            send_outbid_alert(outbid_items[i:i+10])
     else:
         log_to_discord("✅ No items currently outbid.")
 
     if not_onsale_items:
-        send_item_alert(not_onsale_items)
+        for i in range(0, len(not_onsale_items), 10):
+            send_item_alert(not_onsale_items[i:i+10])
 
 def send_outbid_alert(items):
     if not OUTBID_WEBHOOK_URL or not items: return
