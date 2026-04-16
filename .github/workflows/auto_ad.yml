@@ -36,7 +36,7 @@ jobs:
           MONITOR_OUTBID: 'true'
           WEBSHARE_API_URL: ${{ secrets.WEBSHARE_API_URL }}
           USE_RANDOM: 'true'        # Set to 'true' for random selection
-          MIN_VALUE: '5000'
+          MIN_VALUE: '10000'
           # Set to 'true' to use SPECIFIC_IDS, 'false' to auto-fetch top 4 RAP
           USE_CUSTOM_IDS: 'false' 
           OFFER_IDS: '527365852,1365767'
